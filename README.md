@@ -5,7 +5,7 @@ questions using real university documents, attendance policy, exam
 rules, library rules, fees, anti-ragging policy, and uniform rules,
 instead of relying on a language model's general knowledge. Built as
 a learning project to understand how RAG systems work end to end.
-<img width="1916" height="968" alt="image" src="https://github.com/user-attachments/assets/97ec101a-b9d8-47ea-bf20-7aadc08e9ab4" />
+<img width="1916" height="1015" alt="image" src="https://github.com/user-attachments/assets/ede36f85-7d06-479c-a743-b1de01d194f0" />
 
 
 ## Why RAG?
