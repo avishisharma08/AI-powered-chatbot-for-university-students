@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from google import genai
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
@@ -10,9 +9,7 @@ st.set_page_config(page_title="University Assistant",
                    page_icon="🎓", layout="wide")
 
 load_dotenv()
-API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=API_KEY)
-MODEL = "gemini-3.1-flash-lite"
+
 
 BASE_DIR = os.path.dirname(__file__)
 INDEX_DIR = os.path.join(BASE_DIR, "faiss_index")
@@ -52,21 +49,44 @@ def standalone_question(question, history):
     )
 
 
-def answer(question, history):
-    q = standalone_question(question, history)
-    docs = db.similarity_search(q, k=5)
-    context = "\n\n".join(d.page_content for d in docs)
-    prompt = f"""You are a friendly university student assistant. Answer ONLY using the context below.
-Use short paragraphs or bullet points. If the answer is not in the context, say
-"I couldn't find that in the university documents."
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate
+
+llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)
+
+prompt = ChatPromptTemplate.from_template("""You are a friendly university student assistant.
+Answer the question using only the context below.
+
+Rules:
+1. Use only the context. Do not use outside knowledge.
+2. If the context does not contain the answer, say: "I couldn't find that in the university documents."
+3. Never guess numbers, dates or rules.
+4. Use short paragraphs or bullet points.
 
 Context:
 {context}
 
-Question: {q}
-Answer:"""
-    return ask(prompt), docs
+Question: {question}
 
+Answer:""")
+
+THRESHOLD = 0.75
+
+def search_or_refuse(question, k=5):
+    results = db.similarity_search_with_score(question, k=k)
+    return [doc for doc, score in results if score <= THRESHOLD]
+
+def answer(question, history):
+    docs = search_or_refuse(question)
+    if not docs:
+        return "I couldn't find that in the university documents.", []
+    context = "\n\n".join(d.page_content for d in docs)
+    raw_answer = llm.invoke(prompt.format_messages(context=context, question=question)).content
+    if isinstance(raw_answer, list):
+        text = "".join(b["text"] for b in raw_answer if isinstance(b, dict) and b.get("type") == "text")
+    else:
+        text = raw_answer
+    return text, docs
 
 # ---------------------------------------------------------------- styling
 st.markdown("""

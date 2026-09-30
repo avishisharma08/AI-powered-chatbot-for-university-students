@@ -17,7 +17,7 @@ Borrowed books must be returned or renewed before their due date, subject to lib
 
 Students are responsible for returning books on or before the due date. Late returns may attract a fine according to the library's prescribed fine schedule.
 
-Sample rule for RAG testing: A late fine of ₹5 per book per day may be charged for overdue books. The actual fine and any maximum limit must be confirmed from the official library policy.
+ A late fine of ₹5 per book per day may be charged for overdue books. The actual fine and any maximum limit must be confirmed from the official library policy.
 
 2.5 Lost or Damaged Books
 
