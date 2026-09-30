@@ -2,9 +2,9 @@
 
 A Retrieval-Augmented Generation (RAG) chatbot that answers student
 questions using real university documents, attendance policy, exam
-rules, and library rules, instead of relying on a language model's
-general knowledge. Built as a learning project to understand how RAG
-systems work end to end.
+rules, library rules, fees, anti-ragging policy, and uniform rules,
+instead of relying on a language model's general knowledge. Built as
+a learning project to understand how RAG systems work end to end.
 
 ## Why RAG?
 
@@ -31,10 +31,9 @@ of guessing.
    language model
 7. **Generate** — the retrieved chunks are passed to Gemini along with
    the question, using a prompt that instructs it to answer only from
-   the given context and to say "The provided documents don't say" if
-   the answer isn't there
-8. **Respond** — the answer is returned along with the source
-   document(s) it came from
+   the given context and to say so if the answer isn't there
+8. **Respond** — the answer is shown along with the source document(s)
+   it came from, in a Streamlit chat interface
 
 ## Two layers of defense against wrong answers
 
@@ -43,11 +42,6 @@ of guessing.
 | Similarity threshold | Questions on topics the documents don't cover at all |
 | Prompt instructions | Questions on covered topics where the specific fact is missing |
 
-For example, a question about library fines retrieves the library
-rules document (right topic), but the document has no fine amount, so
-the model correctly says the information isn't available rather than
-inventing a number.
-
 ## Tech stack
 
 - **Python**
@@ -55,7 +49,7 @@ inventing a number.
 - **FAISS** — vector similarity search
 - **Google Gemini API** — embeddings (`gemini-embedding-001`) and
   generation (`gemini-3.1-flash-lite`)
-- **Streamlit** — chat interface *(in progress)*
+- **Streamlit** — chat interface with source citations
 - **uv** — dependency management
 
 ## Project status
@@ -64,27 +58,42 @@ inventing a number.
 - [x] Embeddings and FAISS index
 - [x] Similarity-threshold refusal for out-of-scope questions
 - [x] Prompt-based hallucination guardrails
-- [x] End-to-end question answering (tested in notebook)
-- [ ] Streamlit chat interface
+- [x] Streamlit chat interface with source citations
+- [x] Evaluation test set (`test_questions.md`)
 - [ ] Chat memory for follow-up questions
-- [ ] Expanded document set
-- [ ] Formal evaluation with a fixed test-question set
+- [ ] Expanded/real institutional documents
+
+## Evaluation
+
+Tested across 20+ questions spanning all six documents, out-of-scope
+refusals, and borderline cases. Full results and notes are in
+[`test_questions.md`](./test_questions.md).
+
+Key findings:
+- Full-sentence questions retrieve reliably; very short queries
+  (e.g. a single word) are noticeably less reliable, since they carry
+  less context for the embedding to match against.
+- The threshold correctly refuses clearly out-of-scope questions
+  (e.g. general knowledge, unrelated topics).
+- The prompt correctly avoids inventing specific facts (numbers,
+  dates) when they aren't present in the retrieved context.
 
 ## Setup
 
 1. Clone the repo
 2. Create a `.env` file in the project root with:
-4. Open `src/rag_udemy/dataingestion.ipynb` and run the cells in order
+3.install dependencies
+
 
 ## Sample documents
 
 The `data/text_files/` folder contains a small set of fictional sample
-policies (attendance, exams, library) written for testing this
-pipeline. They are not real college rules.
+policies (attendance, exams, library, fees, anti-ragging, uniform)
+written for testing this pipeline. They are not real college rules.
 
 ## What I learned building this
 
 Notes on chunk sizing, embedding vs. keyword search, why retrieval and
-generation need separate safeguards, and common pitfalls (stale FAISS
-indexes after editing source documents, environment/kernel issues) are
-in `learning-log.md`.
+generation need separate safeguards, environment and kernel pitfalls,
+and the risk of letting generated code silently change core logic
+(and how to catch it) are in `learning-log.md`.
