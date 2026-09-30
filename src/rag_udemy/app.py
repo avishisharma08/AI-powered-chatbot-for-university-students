@@ -59,9 +59,15 @@ Answer the question using only the context below.
 
 Rules:
 1. Use only the context. Do not use outside knowledge.
-2. If the context does not contain the answer, say: "I couldn't find that in the university documents."
-3. Never guess numbers, dates or rules.
-4. Use short paragraphs or bullet points.
+2. If the context has no relevant information at all, say exactly:
+   "I couldn't find that in the university documents." and nothing else.
+3. If the context has relevant information but not the exact detail asked
+   (for example, a general rule exists but a specific number or case isn't
+   mentioned), answer directly using what IS stated. Do not say "I couldn't
+   find that" first. Instead, just state what the documents say, and note
+   what specific detail is missing, if relevant.
+4. Never guess numbers, dates or rules that aren't explicitly stated.
+5. Use short paragraphs or bullet points.
 
 Context:
 {context}
