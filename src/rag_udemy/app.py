@@ -1,8 +1,41 @@
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import sqlite3
+
+QUESTION_LIMIT = 10
+
+def get_db():
+    conn = sqlite3.connect("usage.db")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS usage (
+            session_id TEXT PRIMARY KEY,
+            question_count INTEGER DEFAULT 0
+        )
+    """)
+    return conn
+
+def check_and_increment(session_id):
+    conn = get_db()
+    cur = conn.execute("SELECT question_count FROM usage WHERE session_id = ?", (session_id,))
+    row = cur.fetchone()
+    count = row[0] if row else 0
+
+    if count >= QUESTION_LIMIT:
+        conn.close()
+        return False, count
+
+    if row:
+        conn.execute("UPDATE usage SET question_count = question_count + 1 WHERE session_id = ?", (session_id,))
+    else:
+        conn.execute("INSERT INTO usage (session_id, question_count) VALUES (?, 1)", (session_id,))
+    conn.commit()
+    conn.close()
+    return True, count + 1
 
 # Must be the first Streamlit call
 st.set_page_config(page_title="University Assistant",
@@ -49,9 +82,6 @@ def standalone_question(question, history):
     )
 
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
-
 llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)
 
 prompt = ChatPromptTemplate.from_template("""You are a friendly university student assistant.
@@ -78,21 +108,26 @@ Answer:""")
 
 THRESHOLD = 0.75
 
+
 def search_or_refuse(question, k=5):
     results = db.similarity_search_with_score(question, k=k)
     return [doc for doc, score in results if score <= THRESHOLD]
+
 
 def answer(question, history):
     docs = search_or_refuse(question)
     if not docs:
         return "I couldn't find that in the university documents.", []
     context = "\n\n".join(d.page_content for d in docs)
-    raw_answer = llm.invoke(prompt.format_messages(context=context, question=question)).content
+    raw_answer = llm.invoke(prompt.format_messages(
+        context=context, question=question)).content
     if isinstance(raw_answer, list):
-        text = "".join(b["text"] for b in raw_answer if isinstance(b, dict) and b.get("type") == "text")
+        text = "".join(b["text"] for b in raw_answer if isinstance(
+            b, dict) and b.get("type") == "text")
     else:
         text = raw_answer
     return text, docs
+
 
 # ---------------------------------------------------------------- styling
 st.markdown("""

@@ -11,3 +11,4 @@ wheels/
 # Secrets and generated data
 .env
 faiss_index/
+usage.db
