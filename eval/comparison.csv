@@ -1,0 +1,11 @@
+id,question,category,should_refuse,latency_off_sec,latency_on_sec,extra_api_calls,total_sentences,supported_sentences,unsupported_sentences_caught,wrongly_flagged,unsupported_details
+1,what is minimum attendance requirement,answerable,no,1.941,3.38,1,2,2,0,False,
+2,what is the cutoff for attendance,answerable,no,1.44,2.556,1,1,1,0,False,
+3,what happens if my attendance is below 65,partial,no,1.764,2.971,1,2,2,0,False,
+4,what is the fine for returning book late,answerable,no,1.61,2.596,1,2,2,0,False,
+5,how many books can i borrow at once,answerable,no,1.326,2.637,1,2,2,0,False,
+6,is there dress code for sunday,topic_covered_detail_missing,yes,1.837,3.48,0,0,0,0,False,
+7,what is the capital of italy,not_covered,yes,0.493,0.54,0,0,0,0,False,
+8,what is anti-ragging policy,answerable,no,1.743,4.273,1,8,8,0,False,
+9,ragging?,answerable,no,1.592,3.421,1,3,3,0,False,
+10,library mein late fine lagta hai kya,answerable,no,1.661,2.835,1,3,3,0,False,
