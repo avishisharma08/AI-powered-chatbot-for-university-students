@@ -1,2 +1,4 @@
-def main() -> None:
-    print("Hello from rag-udemy!")
+from rag_udemy.app import ask
+
+__all__ = ["ask"]
+

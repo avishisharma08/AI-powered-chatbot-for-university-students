@@ -1,0 +1,11 @@
+id,question,category,expected,source,should_refuse
+1,what is minimum attendance requirement,answerable,75% in each subject,Attendance,no
+2,what is the cutoff for attendance,answerable,75% in each subject,Attendance,no
+3,what happens if my attendance is below 65,partial,may be detained from semester exam; 65% not specified,Attendance,no
+4,what is the fine for returning book late,answerable,VERIFY,Library,no
+5,how many books can i borrow at once,answerable,VERIFY,Library,no
+6,is there dress code for sunday,topic_covered_detail_missing,,Uniform,yes
+7,what is the capital of italy,not_covered,,none,yes
+8,what is anti-ragging policy,answerable,VERIFY,Ragging,no
+9,ragging?,answerable,VERIFY,Ragging,no
+10,library mein late fine lagta hai kya,answerable,VERIFY,Library,no

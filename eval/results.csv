@@ -1,0 +1,28 @@
+id,question,category,answer,sources,top_score,refused,expected,refusal_correct,refusal_with_sources,expected_in_answer,source_correct
+1,what is minimum attendance requirement,answerable,"Students must maintain the minimum attendance percentage prescribed by the university and college. According to the sample rule provided, students must maintain at least 75% attendance in each subject to be eligible to appear in semester examinations, subject to applicable university regulations.",attendance_policy.txt,0.5142,False,75% in each subject,True,False,False,True
+2,what is the cutoff for attendance,answerable,"Students must maintain at least 75% attendance in each subject to be eligible to appear in semester examinations, subject to applicable university regulations.",attendance_policy.txt,0.5186,False,75% in each subject,True,False,False,True
+3,what happens if my attendance is below 65,partial,"Students with attendance below the required percentage may be detained from appearing in the semester examination, according to applicable university rules. 
+
+The documents state that students must maintain at least 75% attendance in each subject to be eligible to appear in semester examinations; however, the documents do not specifically mention the consequences for having attendance below 65% specifically, other than the general rule regarding attendance below the required percentage.",attendance_policy.txt,0.5153,False,may be detained from semester exam; 65% not specified,True,False,False,True
+4,what is the fine for returning book late,answerable,"A late fine of ₹5 per book per day may be charged for overdue books. 
+
+Please note that the actual fine and any maximum limit must be confirmed from the official library policy.",library_rules.txt,0.4672,False,VERIFY,True,False,False,True
+5,how many books can i borrow at once,answerable,The number of books permitted is determined by the library's current borrowing policy. The specific number of books you can borrow at once is not mentioned in the provided documents.,library_rules.txt,0.6247,False,VERIFY,True,False,False,True
+6,is there dress code for sunday,topic_covered_detail_missing,I couldn't find that in the university documents.,uniform_rules.txt,0.6735,True,,True,True,False,True
+7,what is the capital of italy,not_covered,I couldn't find that in the university documents.,,,True,,True,False,False,True
+8,what is anti-ragging policy,answerable,"The anti-ragging policy is designed to prohibit ragging and ensure a safe, respectful, and inclusive learning environment for all students.
+
+Key aspects of the policy include:
+
+*   **Definition:** Ragging is defined as conduct that causes, or is likely to cause, physical or psychological harm, humiliation, fear, or distress to a student, especially freshers. It can occur in person, online, in hostels, or during college-related activities.
+*   **Disciplinary Action:** Students found responsible for ragging may face consequences such as suspension, expulsion, restrictions from institutional activities, or referral to law-enforcement authorities.
+*   **Reporting and Protection:** The institution is committed to handling complaints sensitively and protecting students who report ragging or assist in investigations from retaliation.
+*   **Oversight:** The college may establish an anti-ragging committee and squad to monitor activities, conduct awareness programs, and respond to complaints. Students are required to cooperate with authorized staff and comply with anti-ragging instructions.
+*   **Legal Reference:** The policy notes that the UGC's anti-ragging regulations and the National Anti-Ragging Helpline should be consulted for official definitions, reporting processes, and sanctions.",antiragging_policy.txt,0.4542,False,VERIFY,True,False,False,True
+9,ragging?,answerable,"Ragging is prohibited by the institution, which is committed to providing a safe, respectful, and inclusive learning environment.
+
+It is defined as conduct that causes, or is likely to cause, physical or psychological harm, humiliation, fear, or distress to a student, particularly a fresher. This behavior may occur in person, online, in hostels, or during college-related activities.",antiragging_policy.txt,0.536,False,VERIFY,True,False,False,True
+10,library mein late fine lagta hai kya,answerable,"Haan, library mein late fine lagta hai. 
+
+* Late returns par ₹5 per book per day ka fine charge kiya ja sakta hai. 
+* Fine ki actual rakam aur koi bhi maximum limit library ki official policy se confirm karni hogi.",library_rules.txt,0.421,False,VERIFY,True,False,False,True

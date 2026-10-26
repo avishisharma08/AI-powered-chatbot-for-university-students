@@ -37,14 +37,10 @@ def check_and_increment(session_id):
     conn.close()
     return True, count + 1
 
-# Must be the first Streamlit call
-st.set_page_config(page_title="University Assistant",
-                   page_icon="🎓", layout="wide")
-
+BASE_DIR = os.path.dirname(__file__)
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 load_dotenv()
 
-
-BASE_DIR = os.path.dirname(__file__)
 INDEX_DIR = os.path.join(BASE_DIR, "faiss_index")
 DOCS_DIR = os.path.join(BASE_DIR, "data", "text_files")
 
@@ -66,21 +62,6 @@ def load_db():
 
 
 db = load_db()
-
-
-def ask(prompt: str) -> str:
-    return client.models.generate_content(model=MODEL, contents=prompt).text
-
-
-def standalone_question(question, history):
-    if not history:
-        return question
-    chat = "\n".join(f"{m['role']}: {m['content']}" for m in history[-6:])
-    return ask(
-        "Rewrite the last user question as a standalone question, "
-        f"using the chat for context. Return only the question.\n\n{chat}\n\nQuestion: {question}"
-    )
-
 
 llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)
 
@@ -109,28 +90,41 @@ Answer:""")
 THRESHOLD = 0.75
 
 
-def search_or_refuse(question, k=5):
-    results = db.similarity_search_with_score(question, k=k)
-    return [doc for doc, score in results if score <= THRESHOLD]
+def ask(question: str) -> dict:
+    results = db.similarity_search_with_score(question, k=5)
+    passing = [(doc, score) for doc, score in results if score <= THRESHOLD]
+    if not passing:
+        return {
+            "answer": "I couldn't find that in the university documents.",
+            "chunks": [],
+            "scores": [],
+            "sources": [],
+        }
 
-
-def answer(question, history):
-    docs = search_or_refuse(question)
-    if not docs:
-        return "I couldn't find that in the university documents.", []
-    context = "\n\n".join(d.page_content for d in docs)
-    raw_answer = llm.invoke(prompt.format_messages(
-        context=context, question=question)).content
+    chunks = [doc.page_content for doc, _ in passing]
+    scores = [float(score) for _, score in passing]
+    sources = sorted({os.path.basename(doc.metadata.get("source", "").replace("\\", "/")) for doc, _ in passing})
+    context = "\n\n".join(chunks)
+    raw_answer = llm.invoke(prompt.format_messages(context=context, question=question)).content
     if isinstance(raw_answer, list):
         text = "".join(b["text"] for b in raw_answer if isinstance(
             b, dict) and b.get("type") == "text")
     else:
         text = raw_answer
-    return text, docs
+    return {
+        "answer": text,
+        "chunks": chunks,
+        "scores": scores,
+        "sources": sources,
+    }
 
 
-# ---------------------------------------------------------------- styling
-st.markdown("""
+def main():
+    st.set_page_config(page_title="University Assistant",
+                       page_icon="🎓", layout="wide")
+
+    # ---------------------------------------------------------------- styling
+    st.markdown("""
 <style>
 #MainMenu, footer, [data-testid="stToolbar"] {visibility: hidden;}
 .block-container {padding-top: 1.5rem; max-width: 1050px;}
@@ -171,123 +165,121 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-USER_AVATAR, BOT_AVATAR = "🧑‍🎓", "🤖"
+    USER_AVATAR, BOT_AVATAR = "🧑‍🎓", "🤖"
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+    if "history" not in st.session_state:
+        st.session_state.history = []
 
+    def set_pending(q):
+        st.session_state.pending = q
 
-def set_pending(q):
-    st.session_state.pending = q
+    def chips(files):
+        html = ""
+        for f in files:
+            emoji, title, color, _ = TOPICS.get(f, ("📄", f, "#6B7280", ""))
+            html += f"<span class='chip' style='background:{color}'>{emoji} {title}</span>"
+        return html
 
+    def show_sources(files, answer=""):
+        if files and "I couldn't find that in the university documents." not in answer:
+            st.markdown("**Sources:** " + chips(files), unsafe_allow_html=True)
 
-def chips(files):
-    html = ""
-    for f in files:
-        emoji, title, color, _ = TOPICS.get(f, ("📄", f, "#6B7280", ""))
-        html += f"<span class='chip' style='background:{color}'>{emoji} {title}</span>"
-    return html
+    # ---------------------------------------------------------------- sidebar
+    with st.sidebar:
+        st.markdown("## 🎓 Campus Helper")
+        st.caption("Answers come only from official university documents.")
+        st.markdown("### ⚡ Quick questions")
+        for f, (emoji, title, _, q) in TOPICS.items():
+            st.button(f"{emoji} {title}", key=f"side_{f}", use_container_width=True,
+                      on_click=set_pending, args=(q,))
+        st.divider()
+        st.button("🗑️ Clear chat", use_container_width=True,
+                  on_click=lambda: st.session_state.update(history=[]))
+        st.info("💡 For anything official, please confirm with the college office.")
 
-
-def show_sources(files):
-    if files:
-        st.markdown("**Sources:** " + chips(files), unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------- sidebar
-with st.sidebar:
-    st.markdown("## 🎓 Campus Helper")
-    st.caption("Answers come only from official university documents.")
-    st.markdown("### ⚡ Quick questions")
-    for f, (emoji, title, _, q) in TOPICS.items():
-        st.button(f"{emoji} {title}", key=f"side_{f}", use_container_width=True,
-                  on_click=set_pending, args=(q,))
-    st.divider()
-    st.button("🗑️ Clear chat", use_container_width=True,
-              on_click=lambda: st.session_state.update(history=[]))
-    st.info("💡 For anything official, please confirm with the college office.")
-
-# ---------------------------------------------------------------- header
-st.markdown(
-    "<div class='hero'><h1>🎓 University Assistant</h1>"
-    "<p>Your 24/7 guide to fees, exams, attendance, library rules and more ✨</p></div>",
-    unsafe_allow_html=True,
-)
-
-c1, c2, c3 = st.columns(3)
-c1.markdown(
-    f"<div class='stat s1'><span>📄 {len(TOPICS)}</span>Policy documents</div>", unsafe_allow_html=True)
-c2.markdown("<div class='stat s2'><span>🤖 Gemini</span>AI-powered answers</div>",
-            unsafe_allow_html=True)
-c3.markdown("<div class='stat s3'><span>🔎 Cited</span>Every answer shows sources</div>",
-            unsafe_allow_html=True)
-
-# chat_input is pinned to the bottom of the page whichever tab is open
-question = st.chat_input(
-    "Ask about fees, exams, attendance...") or st.session_state.pop("pending", None)
-
-tab_chat, tab_docs, tab_how = st.tabs(
-    ["💬 Chat", "📚 Documents", "🧠 How it works"])
-
-# ---------------------------------------------------------------- chat tab
-with tab_chat:
-    if not st.session_state.history and not question:
-        st.markdown(
-            "<div class='section-title'>👋 Hi! What would you like to know?</div>", unsafe_allow_html=True)
-        cols = st.columns(3)
-        for i, (f, (emoji, title, color, q)) in enumerate(TOPICS.items()):
-            with cols[i % 3]:
-                st.button(f"{emoji}  {title}", key=f"card_{f}", use_container_width=True,
-                          on_click=set_pending, args=(q,))
-        st.caption("Click a topic or type your own question below 👇")
-
-    for m in st.session_state.history:
-        with st.chat_message(m["role"], avatar=USER_AVATAR if m["role"] == "user" else BOT_AVATAR):
-            st.markdown(m["content"])
-            if m["role"] == "assistant":
-                show_sources(m.get("sources"))
-
-    if question:
-        with st.chat_message("user", avatar=USER_AVATAR):
-            st.markdown(question)
-        with st.chat_message("assistant", avatar=BOT_AVATAR):
-            with st.spinner("🔍 Searching university documents..."):
-                reply, docs = answer(question, st.session_state.history)
-            st.markdown(reply)
-            files = sorted({os.path.basename(d.metadata.get(
-                "source", "").replace("\\", "/")) for d in docs})
-            show_sources(files)
-        st.session_state.history += [
-            {"role": "user", "content": question},
-            {"role": "assistant", "content": reply, "sources": files},
-        ]
-
-# ---------------------------------------------------------------- documents tab
-with tab_docs:
-    st.markdown("<div class='section-title'>📚 Browse the official documents</div>",
-                unsafe_allow_html=True)
-    st.caption("This is exactly what the assistant reads to answer you.")
-    for f, (emoji, title, color, _) in TOPICS.items():
-        path = os.path.join(DOCS_DIR, f)
-        if os.path.exists(path):
-            with st.expander(f"{emoji} {title}  ·  {f}"):
-                with open(path, encoding="utf-8") as fh:
-                    st.text(fh.read())
-
-# ---------------------------------------------------------------- how it works tab
-with tab_how:
-    st.markdown("<div class='section-title'>🧠 How the assistant answers</div>",
-                unsafe_allow_html=True)
-    a, b, c = st.columns(3)
-    a.info("**1. 🔎 Search**\n\nYour question is turned into numbers (an embedding) and matched against the document chunks.")
-    b.success(
-        "**2. 📎 Retrieve**\n\nThe 5 most relevant chunks are picked from the FAISS index.")
-    c.warning(
-        "**3. ✍️ Answer**\n\nGemini writes the reply using only those chunks, and cites the files.")
-    st.markdown("<div class='section-title'>❓ Good to know</div>",
-                unsafe_allow_html=True)
+    # ---------------------------------------------------------------- header
     st.markdown(
-        "- 💬 Follow-ups like *“elaborate on that”* work, because the question is rewritten using the chat.\n"
-        "- 🚫 If the answer isn't in the documents, the assistant says so instead of guessing.\n"
-        "- 🔄 To update the knowledge, edit the `.txt` files and rebuild the index in `dataingestion.ipynb`."
+        "<div class='hero'><h1>🎓 University Assistant</h1>"
+        "<p>Your 24/7 guide to fees, exams, attendance, library rules and more ✨</p></div>",
+        unsafe_allow_html=True,
     )
+
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(
+        f"<div class='stat s1'><span>📄 {len(TOPICS)}</span>Policy documents</div>", unsafe_allow_html=True)
+    c2.markdown("<div class='stat s2'><span>🤖 Gemini</span>AI-powered answers</div>",
+                unsafe_allow_html=True)
+    c3.markdown("<div class='stat s3'><span>🔎 Cited</span>Every answer shows sources</div>",
+                unsafe_allow_html=True)
+
+    # chat_input is pinned to the bottom of the page whichever tab is open
+    question = st.chat_input(
+        "Ask about fees, exams, attendance...") or st.session_state.pop("pending", None)
+
+    tab_chat, tab_docs, tab_how = st.tabs(
+        ["💬 Chat", "📚 Documents", "🧠 How it works"])
+
+    # ---------------------------------------------------------------- chat tab
+    with tab_chat:
+        if not st.session_state.history and not question:
+            st.markdown(
+                "<div class='section-title'>👋 Hi! What would you like to know?</div>", unsafe_allow_html=True)
+            cols = st.columns(3)
+            for i, (f, (emoji, title, color, q)) in enumerate(TOPICS.items()):
+                with cols[i % 3]:
+                    st.button(f"{emoji}  {title}", key=f"card_{f}", use_container_width=True,
+                              on_click=set_pending, args=(q,))
+            st.caption("Click a topic or type your own question below 👇")
+
+        for m in st.session_state.history:
+            with st.chat_message(m["role"], avatar=USER_AVATAR if m["role"] == "user" else BOT_AVATAR):
+                st.markdown(m["content"])
+                if m["role"] == "assistant":
+                    show_sources(m.get("sources"), m.get("content", ""))
+
+        if question:
+            with st.chat_message("user", avatar=USER_AVATAR):
+                st.markdown(question)
+            with st.chat_message("assistant", avatar=BOT_AVATAR):
+                with st.spinner("🔍 Searching university documents..."):
+                    res = ask(question)
+                st.markdown(res["answer"])
+                show_sources(res["sources"], res["answer"])
+            st.session_state.history += [
+                {"role": "user", "content": question},
+                {"role": "assistant", "content": res["answer"], "sources": res["sources"]},
+            ]
+
+    # ---------------------------------------------------------------- documents tab
+    with tab_docs:
+        st.markdown("<div class='section-title'>📚 Browse the official documents</div>",
+                    unsafe_allow_html=True)
+        st.caption("This is exactly what the assistant reads to answer you.")
+        for f, (emoji, title, color, _) in TOPICS.items():
+            path = os.path.join(DOCS_DIR, f)
+            if os.path.exists(path):
+                with st.expander(f"{emoji} {title}  ·  {f}"):
+                    with open(path, encoding="utf-8") as fh:
+                        st.text(fh.read())
+
+    # ---------------------------------------------------------------- how it works tab
+    with tab_how:
+        st.markdown("<div class='section-title'>🧠 How the assistant answers</div>",
+                    unsafe_allow_html=True)
+        a, b, c = st.columns(3)
+        a.info("**1. 🔎 Search**\n\nYour question is turned into numbers (an embedding) and matched against the document chunks.")
+        b.success(
+            "**2. 📎 Retrieve**\n\nThe 5 most relevant chunks are picked from the FAISS index.")
+        c.warning(
+            "**3. ✍️ Answer**\n\nGemini writes the reply using only those chunks, and cites the files.")
+        st.markdown("<div class='section-title'>❓ Good to know</div>",
+                    unsafe_allow_html=True)
+        st.markdown(
+            "- 💬 Follow-ups like *“elaborate on that”* work, because the question is rewritten using the chat.\n"
+            "- 🚫 If the answer isn't in the documents, the assistant says so instead of guessing.\n"
+            "- 🔄 To update the knowledge, edit the `.txt` files and rebuild the index in `dataingestion.ipynb`."
+        )
+
+
+if __name__ == "__main__":
+    main()
