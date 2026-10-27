@@ -8,6 +8,8 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import sqlite3
 
 QUESTION_LIMIT = 10
+REFUSAL_TEXT = "I couldn't find that in the university documents."
+
 
 def get_db():
     conn = sqlite3.connect("usage.db")
@@ -95,7 +97,7 @@ def ask(question: str) -> dict:
     passing = [(doc, score) for doc, score in results if score <= THRESHOLD]
     if not passing:
         return {
-            "answer": "I couldn't find that in the university documents.",
+            "answer": REFUSAL_TEXT,
             "chunks": [],
             "scores": [],
             "sources": [],
@@ -111,6 +113,10 @@ def ask(question: str) -> dict:
             b, dict) and b.get("type") == "text")
     else:
         text = raw_answer
+
+    if text.strip() == REFUSAL_TEXT:
+        sources = []
+
     return {
         "answer": text,
         "chunks": chunks,
@@ -180,8 +186,8 @@ def main():
             html += f"<span class='chip' style='background:{color}'>{emoji} {title}</span>"
         return html
 
-    def show_sources(files, answer=""):
-        if files and "I couldn't find that in the university documents." not in answer:
+    def show_sources(files):
+        if files:
             st.markdown("**Sources:** " + chips(files), unsafe_allow_html=True)
 
     # ---------------------------------------------------------------- sidebar
@@ -235,7 +241,7 @@ def main():
             with st.chat_message(m["role"], avatar=USER_AVATAR if m["role"] == "user" else BOT_AVATAR):
                 st.markdown(m["content"])
                 if m["role"] == "assistant":
-                    show_sources(m.get("sources"), m.get("content", ""))
+                    show_sources(m.get("sources"))
 
         if question:
             with st.chat_message("user", avatar=USER_AVATAR):
@@ -244,7 +250,7 @@ def main():
                 with st.spinner("🔍 Searching university documents..."):
                     res = ask(question)
                 st.markdown(res["answer"])
-                show_sources(res["sources"], res["answer"])
+                show_sources(res["sources"])
             st.session_state.history += [
                 {"role": "user", "content": question},
                 {"role": "assistant", "content": res["answer"], "sources": res["sources"]},
